@@ -1,0 +1,9 @@
+data/images/*
+data/features/*
+!data/features/README.md
+tmp/
+logs/
+wandb/
+__pycache__
+.ipython_checkpoints/
+data/trainval2017/
