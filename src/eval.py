@@ -16,40 +16,19 @@ def evaluate(data_loader, model, model_type="clip"):
 
     correct, total, all_true = 0, 0, 0
     preds = []
+    errors = list()
     
     for i, data in tqdm(enumerate(data_loader), total=len(data_loader)):
     # if True:
     #     i=0
     #     data = data_loader[0]
-        if model_type == "visualbert":
-            batch_cap, batch_img, y = data
-            batch_inputs = {}
-            for k,v in batch_cap.items():
-                batch_inputs[k] = v.cuda()
-            img_attention_mask = torch.ones(batch_img.shape[:-1], dtype=torch.long)
-            img_token_type_ids = torch.ones(batch_img.shape[:-1], dtype=torch.long)
-            batch_inputs.update({
-                "visual_embeds": batch_img.cuda(),
-                "visual_token_type_ids": img_token_type_ids.cuda(),
-                "visual_attention_mask": img_attention_mask.cuda(),
-                })
-
-        elif  model_type == "lxmert":
-            batch_cap, batch_box, batch_img, y = data
-            batch_inputs = {}
-            for k,v in batch_cap.items():
-                batch_inputs[k] = v.cuda()
-            batch_inputs.update({
-                "visual_feats": batch_img.cuda(),
-                "visual_pos": batch_box.cuda(),
-                })
-        elif model_type == "clip":
-            input_ids, pixel_values, y = data
+        if model_type == "clip":
+            input_ids, pixel_values, y, captions, filenames = data
         y = y.cuda()
+        if sum(y) != 0:
+            continue
         with torch.no_grad():
-            if model_type in ["visualbert", "lxmert"]:
-                outputs = model(**batch_inputs, labels=y)
-            elif model_type == "clip":
+            if model_type == "clip":
                 batch_cap = input_ids.cuda()
                 batch_img = pixel_values.cuda()
                 outputs = model(input_ids=batch_cap, 
@@ -67,13 +46,14 @@ def evaluate(data_loader, model, model_type="clip"):
         total+=batch_img.shape[0]
         all_true += sum(y)
         ave_score = correct / float(total)
-        debug = 'sd'
+        if correct_this_batch != batch_img.shape[0]:
+            errors.append(filenames[0]+' '+str(int(y[0]))+' '+str(captions))
 
         # print errors
         #print (y != torch.argmax(scores, dim=1))
 
     # TODO: save also predictions
-    return ave_score, total, all_true, preds
+    return ave_score, total, all_true, preds, errors
             
 
 if __name__ == "__main__":
@@ -103,23 +83,24 @@ if __name__ == "__main__":
         model = CLIPModel.from_pretrained(clip_str)
         processor = CLIPProcessor.from_pretrained(clip_str)
     
-    json_path=os.path.join('data', 'splits', 'random', 'test.jsonl')
+    # json_path=os.path.join('data', 'splits', 'random', 'test.jsonl')
     # json_path=os.path.join('data', 'splits', 'zeroshot', 'test.jsonl')
-    img_path=os.path.join('data', 'images')
-    # img_path=os.path.join('data', 'trainval2017')
+    json_path=os.path.join('data', 'data_files', 'all_vsr_validated_data.jsonl')
+    # img_path=os.path.join('data', 'images')
+    img_path=os.path.join('data', 'trainval2017')
     dataset = ImageTextClassificationDataset(img_path, json_path, model_type=model_type)
     # for image, caption, label in dataset:
     #     print(caption, 'True' if label else 'False') 
     # load data
     def collate_fn_batch_clip(batch):
-        imgs, captions, labels = zip(*batch)
+        imgs, captions, labels, filenames = zip(*batch)
         # inputs = processor(list(imgs), list(captions), return_tensors="pt", padding=True, truncation=True)
         # captions = [captions[0]+' (False)', captions[0]+' (True)']
         inputs = processor(list(captions[0]), images=list(imgs), return_tensors="pt", padding=True, truncation=True)
         labels = torch.tensor(labels)
         # images = torch.tensor(imgs)
         # return inputs.input_ids, inputs.pixel_values.unsqueeze(1), labels
-        return inputs.input_ids, inputs.pixel_values, labels
+        return inputs.input_ids, inputs.pixel_values, labels, list(captions[0]), filenames
         
 
     # img_feature_path = args.img_feature_path
@@ -135,7 +116,7 @@ if __name__ == "__main__":
         # persistent_workers=True,
         num_workers=0,)
         # num_workers=16,)
-    acc, total, all_true, preds = evaluate(test_loader, model, model_type=model_type)
+    acc, total, all_true, preds, errors = evaluate(test_loader, model, model_type=model_type)
     print (f"total example: {total}, # true example: {all_true}, acccuracy: {acc}")
 
     # save preds
@@ -144,5 +125,6 @@ if __name__ == "__main__":
             for i in range(len(preds)):
                 f.write(str(preds[i])+"\n")
         
-
+    # for e in errors:
+    #     print (e)
 

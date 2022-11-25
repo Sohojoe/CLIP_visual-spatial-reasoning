@@ -12,9 +12,10 @@
 ### results
 (basically random; looking into why)
 ```
-openai/clip-vit-base-patch32  52.47035573122529%
-clip-vit-large-patch14        50.74110671936759
-clip-vit-large-patch14-336    50.79051383399209
+only FALSE examples from all_vsr_validated_data 
+clip-vit-large-patch14-336         = 59.27898402294142
+clip-vit-large-patch14             = 61.90086030315445
+openai/clip-vit-base-patch32       = 41.765669807455963
 ```
 
 ### install
