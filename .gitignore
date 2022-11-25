@@ -7,3 +7,4 @@ wandb/
 __pycache__
 .ipython_checkpoints/
 data/trainval2017/
+src/clip/

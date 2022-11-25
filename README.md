@@ -9,10 +9,23 @@
 </p>
 
 
+### results
+(basically random; looking into why)
+```
+openai/clip-vit-base-patch32  52.47035573122529%
+clip-vit-large-patch14        50.74110671936759
+clip-vit-large-patch14-336    50.79051383399209
+```
+
 ### install
 ```
 conda env create
 conda activate clip-vsr
+```
+
+### run
+```
+python src\eval.py
 ```
 
 #### Download images
