@@ -25,8 +25,8 @@ def evaluate(data_loader, model, model_type="clip"):
         if model_type == "clip":
             input_ids, pixel_values, y, captions, filenames = data
         y = y.cuda()
-        if sum(y) != 0:
-            continue
+        # if sum(y) != 0:
+        #     continue
         with torch.no_grad():
             if model_type == "clip":
                 batch_cap = input_ids.cuda()
@@ -37,7 +37,13 @@ def evaluate(data_loader, model, model_type="clip"):
                 #idx = logits.argmax(-1).item()
                 #model.config.id2label[idx]
 
-        scores = outputs.logits_per_image
+        # reproduce huggingface webapp
+        image_features = outputs.image_embeds
+        text_features = outputs.text_embeds
+        image_features /= image_features.norm(dim=-1, keepdim=True)
+        text_features /= text_features.norm(dim=-1, keepdim=True)
+        scores = (100.0 * image_features @ text_features.T).softmax(dim=-1)
+        # scores = outputs.logits_per_image
         
         preds_current = torch.argmax(scores, dim=1)
         correct_this_batch = int(sum(y == preds_current))
@@ -47,7 +53,7 @@ def evaluate(data_loader, model, model_type="clip"):
         all_true += sum(y)
         ave_score = correct / float(total)
         if correct_this_batch != batch_img.shape[0]:
-            errors.append(filenames[0]+' '+str(int(y[0]))+' '+str(captions))
+            errors.append(filenames[0]+' '+str(int(y[0]))+' '+captions[0]+', '+captions[1]+', '+str(float(scores[0][0]))+', '+str(float(scores[0][1])))
 
         # print errors
         #print (y != torch.argmax(scores, dim=1))
@@ -60,6 +66,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='eval')
     parser.add_argument('--model_type', type=str, default='clip')
+    parser.add_argument('--model_url', type=str, default='laion/CLIP-ViT-H-14-laion2B-s32B-b79K')
     # parser.add_argument('--checkpoint_path', type=str, required=True)
     # parser.add_argument('--img_feature_path', type=str, required=True)
     # parser.add_argument('--test_json_path', type=str, required=True)
@@ -70,6 +77,7 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     model_type = args.model_type
+    model_url = args.model_url
     # load model
     if model_type == "clip":
         print("Loading CLIP model...")
@@ -77,15 +85,20 @@ if __name__ == "__main__":
         # model, clip_preprocess = clip.load(clip_model_name, device=device)
         # model.to(device).eval()
         # tokenizer = clip.tokenize
-        # clip_str = "openai/clip-vit-base-patch32"
-        # clip_str = "openai/clip-vit-large-patch14"
-        clip_str = "openai/clip-vit-large-patch14-336"
-        model = CLIPModel.from_pretrained(clip_str)
-        processor = CLIPProcessor.from_pretrained(clip_str)
+        # model_url = "openai/clip-vit-base-patch32"
+        # model_url = "openai/clip-vit-large-patch14"
+        # model_url = "openai/clip-vit-large-patch14-336"
+        # model_url = "laion/CLIP-ViT-H-14-laion2B-s32B-b79K"
+        # model = CLIPModel.from_pretrained(model_url)
+        # processor = CLIPProcessor.from_pretrained(model_url)
+        from transformers import AutoProcessor, AutoModel
+        processor = AutoProcessor.from_pretrained(model_url)
+        model = AutoModel.from_pretrained(model_url)
     
     # json_path=os.path.join('data', 'splits', 'random', 'test.jsonl')
     # json_path=os.path.join('data', 'splits', 'zeroshot', 'test.jsonl')
     json_path=os.path.join('data', 'data_files', 'all_vsr_validated_data.jsonl')
+    # json_path=os.path.join('data', 'data_files', 'debug.jsonl')
     # img_path=os.path.join('data', 'images')
     img_path=os.path.join('data', 'trainval2017')
     dataset = ImageTextClassificationDataset(img_path, json_path, model_type=model_type)
@@ -96,7 +109,9 @@ if __name__ == "__main__":
         imgs, captions, labels, filenames = zip(*batch)
         # inputs = processor(list(imgs), list(captions), return_tensors="pt", padding=True, truncation=True)
         # captions = [captions[0]+' (False)', captions[0]+' (True)']
-        inputs = processor(list(captions[0]), images=list(imgs), return_tensors="pt", padding=True, truncation=True)
+        # inputs = processor(list(captions[0]), images=list(imgs), return_tensors="pt", padding=True, truncation=True)
+        # inputs = processor(list(captions[0]), images=list(imgs), return_tensors="pt", padding=True)
+        inputs = processor(captions[0], images=imgs, return_tensors="pt", padding=True)
         labels = torch.tensor(labels)
         # images = torch.tensor(imgs)
         # return inputs.input_ids, inputs.pixel_values.unsqueeze(1), labels
