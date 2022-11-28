@@ -23,36 +23,47 @@ def evaluate(data_loader, model, model_type="clip"):
     #     i=0
     #     data = data_loader[0]
         if model_type == "clip":
-            input_ids, pixel_values, y, captions, filenames = data
+            # input_ids, pixel_values, y, captions, filenames = data
+            text, image, y, captions, filenames = data
         y = y.cuda()
+        image = image.cuda()
+        text = text.cuda()
         # if sum(y) != 0:
         #     continue
-        with torch.no_grad():
+        # with torch.no_grad():
+        with torch.no_grad(), torch.cuda.amp.autocast():
             if model_type == "clip":
-                batch_cap = input_ids.cuda()
-                batch_img = pixel_values.cuda()
-                outputs = model(input_ids=batch_cap, 
-                        pixel_values=batch_img)
-                #logits = outputs.logits
-                #idx = logits.argmax(-1).item()
-                #model.config.id2label[idx]
+                # batch_cap = input_ids.cuda()
+                # batch_img = pixel_values.cuda()
+                # outputs = model(input_ids=batch_cap, 
+                #         pixel_values=batch_img)
+                # #logits = outputs.logits
+                # #idx = logits.argmax(-1).item()
+                # #model.config.id2label[idx]
+                image_features = model.encode_image(image, True)
+                text_features = model.encode_text(text, True)
+                # image_features /= image_features.norm(dim=-1, keepdim=True)
+                # text_features /= text_features.norm(dim=-1, keepdim=True)
+
+                text_probs = (100.0 * image_features @ text_features.T).softmax(dim=-1)
+                # text_probs = (100.0 * image_features @ text_features.T)
 
         # reproduce huggingface webapp
-        image_features = outputs.image_embeds
-        text_features = outputs.text_embeds
-        image_features /= image_features.norm(dim=-1, keepdim=True)
-        text_features /= text_features.norm(dim=-1, keepdim=True)
-        scores = (100.0 * image_features @ text_features.T).softmax(dim=-1)
-        # scores = outputs.logits_per_image
+        # image_features = outputs.image_embeds
+        # text_features = outputs.text_embeds
+        # image_features /= image_features.norm(dim=-1, keepdim=True)
+        # text_features /= text_features.norm(dim=-1, keepdim=True)
+        # scores = (100.0 * image_features @ text_features.T).softmax(dim=-1)
+        scores = text_probs
         
         preds_current = torch.argmax(scores, dim=1)
         correct_this_batch = int(sum(y == preds_current))
         correct += correct_this_batch
         preds += preds_current.cpu().numpy().tolist()
-        total+=batch_img.shape[0]
+        total+=image.shape[0]
         all_true += sum(y)
         ave_score = correct / float(total)
-        if correct_this_batch != batch_img.shape[0]:
+        if correct_this_batch != image.shape[0]:
             errors.append(filenames[0]+' '+str(int(y[0]))+' '+captions[0]+', '+captions[1]+', '+str(float(scores[0][0]))+', '+str(float(scores[0][1])))
 
         # print errors
@@ -91,14 +102,19 @@ if __name__ == "__main__":
         # model_url = "laion/CLIP-ViT-H-14-laion2B-s32B-b79K"
         # model = CLIPModel.from_pretrained(model_url)
         # processor = CLIPProcessor.from_pretrained(model_url)
-        from transformers import AutoProcessor, AutoModel
-        processor = AutoProcessor.from_pretrained(model_url)
-        model = AutoModel.from_pretrained(model_url)
-    
+        # from transformers import AutoProcessor, AutoModel
+        # processor = AutoProcessor.from_pretrained(model_url)
+        # model = AutoModel.from_pretrained(model_url)
+        import open_clip
+        # 'ViT-H-14', 'laion2b_s32b_b79k'
+        model, _, preprocess = open_clip.create_model_and_transforms('ViT-H-14', pretrained='laion2b_s32b_b79k')
+        tokenizer = open_clip.get_tokenizer('ViT-H-14')
+
+
     # json_path=os.path.join('data', 'splits', 'random', 'test.jsonl')
     # json_path=os.path.join('data', 'splits', 'zeroshot', 'test.jsonl')
     json_path=os.path.join('data', 'data_files', 'all_vsr_validated_data.jsonl')
-    # json_path=os.path.join('data', 'data_files', 'debug.jsonl')
+    json_path=os.path.join('data', 'data_files', 'debug.jsonl')
     # img_path=os.path.join('data', 'images')
     img_path=os.path.join('data', 'trainval2017')
     dataset = ImageTextClassificationDataset(img_path, json_path, model_type=model_type)
@@ -111,11 +127,18 @@ if __name__ == "__main__":
         # captions = [captions[0]+' (False)', captions[0]+' (True)']
         # inputs = processor(list(captions[0]), images=list(imgs), return_tensors="pt", padding=True, truncation=True)
         # inputs = processor(list(captions[0]), images=list(imgs), return_tensors="pt", padding=True)
-        inputs = processor(captions[0], images=imgs, return_tensors="pt", padding=True)
+        # inputs = processor(captions[0], images=imgs, return_tensors="pt", padding=True)
         labels = torch.tensor(labels)
-        # images = torch.tensor(imgs)
-        # return inputs.input_ids, inputs.pixel_values.unsqueeze(1), labels
-        return inputs.input_ids, inputs.pixel_values, labels, list(captions[0]), filenames
+        # # images = torch.tensor(imgs)
+        # # return inputs.input_ids, inputs.pixel_values.unsqueeze(1), labels
+        # return inputs.input_ids, inputs.pixel_values, labels, list(captions[0]), filenames
+        # image = preprocess(imgs).unsqueeze(0)
+        image = preprocess(imgs[0]).unsqueeze(0)
+        text = tokenizer(captions[0])
+        # image_features = model.encode_image(image)
+        # text_features = model.encode_text(text)
+        # inputs = processor(captions[0], images=imgs, return_tensors="pt", padding=True)
+        return text, image, labels, list(captions[0]), filenames
         
 
     # img_feature_path = args.img_feature_path
@@ -140,6 +163,6 @@ if __name__ == "__main__":
             for i in range(len(preds)):
                 f.write(str(preds[i])+"\n")
         
-    # for e in errors:
-    #     print (e)
+    for e in errors:
+        print (e)
 

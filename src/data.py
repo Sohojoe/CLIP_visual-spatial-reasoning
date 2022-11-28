@@ -145,22 +145,10 @@ class ImageTextClassificationDataset(Dataset):
         # ]
         
         # use negative dict
-        # captions = [
-        #     # false case first
-        #     data_point["caption"].split(' ' + relation + ' ')[0] \
-        #         + ' ' + negate[relation] + ' ' + \
-        #         data_point["caption"].split(' ' + relation + ' ')[1], 
-        #     # true case second
-        #     data_point["caption"].split(' ' + relation + ' ')[0] \
-        #         + ' ' + relation + ' ' + \
-        #         data_point["caption"].split(' ' + relation + ' ')[1], 
-        # ]
-
-        # not 
         captions = [
             # false case first
             data_point["caption"].split(' ' + relation + ' ')[0] \
-                + ' not ' + relation + ' ' + \
+                + ' ' + negate[relation] + ' ' + \
                 data_point["caption"].split(' ' + relation + ' ')[1], 
             # true case second
             data_point["caption"].split(' ' + relation + ' ')[0] \
@@ -168,10 +156,29 @@ class ImageTextClassificationDataset(Dataset):
                 data_point["caption"].split(' ' + relation + ' ')[1], 
         ]
 
+        # not 
+        # captions = [
+        #     # false case first
+        #     data_point["caption"].split(' ' + relation + ' ')[0] \
+        #         + ' not ' + relation + ' ' + \
+        #         data_point["caption"].split(' ' + relation + ' ')[1], 
+        #     # true case second
+        #     data_point["caption"].split(' ' + relation + ' ')[0] \
+        #         + ' ' + relation + ' ' + \
+        #         data_point["caption"].split(' ' + relation + ' ')[1], 
+        # ]
+
         # load Image
         img_path = os.path.join(self.img_path, data_point["image"])
         # image = cv2.imread(img_path)
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
         image = Image.open(img_path)
+        # image = cv2.imread(img_path)
+        # im_pil = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # im_pil = Image.fromarray(im_pil)   
+        # image = im_pil     
+
         return image, captions, data_point["label"], data_point["image"]
         # return self.imgs[data_point["image"]], captions, data_point["label"]
         # return self.imgs[data_point["image"]], data_point["caption"], data_point["label"]

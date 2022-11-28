@@ -24,7 +24,6 @@ dependencies:
       - utils
       # - wandb
 
-
       # - ftfy
       # - regex
       # # - transformers==4.21.2
@@ -34,6 +33,7 @@ dependencies:
       # - requests
       - -e git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers
       - -e git+https://github.com/openai/CLIP.git@main#egg=clip
+      - -e git+https://github.com/mlfoundations/open_clip.git@main#egg=open_clip_torch
       # - -e git+https://github.com/pharmapsychotic/BLIP.git@main#egg=blip
       # - -e .
 variables:
