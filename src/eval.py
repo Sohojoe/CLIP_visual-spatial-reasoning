@@ -40,8 +40,8 @@ def evaluate(data_loader, model, model_type="clip"):
         # reproduce huggingface webapp
         image_features = outputs.image_embeds
         text_features = outputs.text_embeds
-        image_features /= image_features.norm(dim=-1, keepdim=True)
-        text_features /= text_features.norm(dim=-1, keepdim=True)
+        # image_features /= image_features.norm(dim=-1, keepdim=True)
+        # text_features /= text_features.norm(dim=-1, keepdim=True)
         scores = (100.0 * image_features @ text_features.T).softmax(dim=-1)
         # scores = outputs.logits_per_image
         

@@ -10,13 +10,16 @@
 
 
 ### results
-(basically random; looking into why)
+
 ```
-only FALSE examples from all_vsr_validated_data 
-clip-vit-large-patch14-336         = 59.27898402294142
-clip-vit-large-patch14             = 61.90086030315445
-openai/clip-vit-base-patch32       = 41.765669807455963
+python src\eval.py --model_url laion/CLIP-ViT-H-14-laion2B-s32B-b79K
 ```
+Score: 53.760%
+
+```
+python src\eval.py --model_url openai/clip-vit-large-patch14-336
+```
+Score: 53.849%
 
 ### install
 ```

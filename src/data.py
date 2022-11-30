@@ -145,28 +145,28 @@ class ImageTextClassificationDataset(Dataset):
         # ]
         
         # use negative dict
-        # captions = [
-        #     # false case first
-        #     data_point["caption"].split(' ' + relation + ' ')[0] \
-        #         + ' ' + negate[relation] + ' ' + \
-        #         data_point["caption"].split(' ' + relation + ' ')[1], 
-        #     # true case second
-        #     data_point["caption"].split(' ' + relation + ' ')[0] \
-        #         + ' ' + relation + ' ' + \
-        #         data_point["caption"].split(' ' + relation + ' ')[1], 
-        # ]
-
-        # not 
         captions = [
             # false case first
             data_point["caption"].split(' ' + relation + ' ')[0] \
-                + ' not ' + relation + ' ' + \
+                + ' ' + negate[relation] + ' ' + \
                 data_point["caption"].split(' ' + relation + ' ')[1], 
             # true case second
             data_point["caption"].split(' ' + relation + ' ')[0] \
                 + ' ' + relation + ' ' + \
                 data_point["caption"].split(' ' + relation + ' ')[1], 
         ]
+
+        # # not 
+        # captions = [
+        #     # false case first
+        #     data_point["caption"].split(' ' + relation + ' ')[0] \
+        #         + ' not ' + relation + ' ' + \
+        #         data_point["caption"].split(' ' + relation + ' ')[1], 
+        #     # true case second
+        #     data_point["caption"].split(' ' + relation + ' ')[0] \
+        #         + ' ' + relation + ' ' + \
+        #         data_point["caption"].split(' ' + relation + ' ')[1], 
+        # ]
 
         # load Image
         img_path = os.path.join(self.img_path, data_point["image"])
