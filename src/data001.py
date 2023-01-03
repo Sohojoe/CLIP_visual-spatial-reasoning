@@ -35,10 +35,10 @@ negate = {
     "at the right side of": "at the left side of", 
     "at the left side of": "at the right side of",
     "attached to": "disconnect from", 
-    "at the back of": "", 
-    "ahead of": "", 
+    "at the back of": "at the front of", 
+    "ahead of": "behind", 
     "against": "away from", 
-    "at the edge of": "not at the edge of", 
+    "at the edge of": "far from the edge of", 
     # Directional
     "off": "on", 
     "past": "before", 
@@ -60,7 +60,7 @@ negate = {
     "by": "far away from", 
     "close to": "far from", 
     "near": "far from", 
-    "far from": "cloase to", 
+    "far from": "close to", 
     "far away from": "by", 
     # Topological
     "connected to": "detached from", 

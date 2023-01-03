@@ -6,7 +6,7 @@ import torch
 from transformers import BertTokenizer, VisualBertModel, \
         VisualBertForVisualReasoning, LxmertForPreTraining, LxmertTokenizer
 from lxmert_for_classification import LxmertForBinaryClassification
-from data import ImageTextClassificationDataset
+from data001 import ImageTextClassificationDataset
 # import clip
 from transformers import CLIPProcessor, CLIPModel
 
@@ -66,7 +66,8 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='eval')
     parser.add_argument('--model_type', type=str, default='clip')
-    parser.add_argument('--model_url', type=str, default='laion/CLIP-ViT-H-14-laion2B-s32B-b79K')
+    # parser.add_argument('--model_url', type=str, default='laion/CLIP-ViT-H-14-laion2B-s32B-b79K')
+    parser.add_argument('--model_url', type=str, default='openai/clip-vit-large-patch14-336')
     # parser.add_argument('--checkpoint_path', type=str, required=True)
     # parser.add_argument('--img_feature_path', type=str, required=True)
     # parser.add_argument('--test_json_path', type=str, required=True)

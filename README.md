@@ -9,17 +9,29 @@
 </p>
 
 
-### results
+### v-002 results
 
 ```
-python src\eval.py --model_url laion/CLIP-ViT-H-14-laion2B-s32B-b79K
+python src\eval002.py --model_url laion/CLIP-ViT-H-14-laion2B-s32B-b79K
 ```
-Score: 53.760%
+Score: 53.83%
 
 ```
-python src\eval.py --model_url openai/clip-vit-large-patch14-336
+python src\eval002.py --model_url openai/clip-vit-large-patch14-336
 ```
-Score: 53.849%
+Score: 53.86%
+
+### v-001 results
+
+```
+python src\eval001.py --model_url laion/CLIP-ViT-H-14-laion2B-s32B-b79K
+```
+Score: 53.83%
+
+```
+python src\eval001.py --model_url openai/clip-vit-large-patch14-336
+```
+Score: 53.86%
 
 ### install
 ```
