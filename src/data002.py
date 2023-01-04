@@ -184,7 +184,7 @@ class ImageTextClassificationDataset(Dataset):
             # full_subject_a + ' ' + negative_relation + ' ' + full_subject_b,
             # full_subject_a + ' ' + relation, 
             # full_subject_a + ' "' + negative_relation + '" ' + full_subject_b,
-            full_subject_a + ' "' + negative_relation + '"',
+            full_subject_a + ' "' + relation + '"',
             # data_point["caption"].split(' ' + relation + ' ')[0] \
             #     + ' ' + relation,
             # "<" + subject_a + '> <' + negate[relation] + '> <' + subject_b + '>',
