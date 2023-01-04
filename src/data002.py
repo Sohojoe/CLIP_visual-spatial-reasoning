@@ -36,7 +36,7 @@ negate = {
     "at the left side of": "at the right side of",
     "attached to": "disconnect from", 
     "at the back of": "at the front of", 
-    "ahead of": "behind", 
+    "ahead of": "not ahead of", 
     "against": "away from", 
     "at the edge of": "far from the edge of", 
     # Directional
@@ -68,7 +68,7 @@ negate = {
     "has as a part": "does not have a part", 
     "part of": "not part of", 
     "contains": "does not contain", 
-    "within": "outside", 
+    "within": "outside of", 
     "at": "not at", 
     "on": "not on", 
     "in": "not in",
@@ -84,12 +84,12 @@ negate = {
     # Unallocated
     "beyond": "inside",
     "next to": "far from", 
-    "opposite to": "same as", 
+    "opposite to": "not opposite to", 
     "enclosed by": "not enclosed by", 
     # missing
     "above": "below",
     "below": "above",
-    "behind": "infront",
+    "behind": "in front of",
     "on top of": "not on top of",
     "under": "over",
     "over": "under",
@@ -127,18 +127,34 @@ class ImageTextClassificationDataset(Dataset):
     def __getitem__(self, idx):
         data_point = self.data_json[idx]
         relation = data_point["relation"]
+        negative_relation = negate[relation]
         full_subject_a = data_point["caption"].split(' ' + relation + ' ')[0]
         full_subject_b = data_point["caption"].split(' ' + relation + ' ')[1]
         full_subject_a = full_subject_a.strip(".").lower()
         full_subject_b = full_subject_b.strip(".").lower()
-        # stopwords = ['the', 'is']
-        stopwords = ['is']
+        # stopwords = ['the']
+        stopwords = []
+        # remove stop words
         full_subject_a  = [word for word in full_subject_a.split() if word.lower() not in stopwords]
         full_subject_b  = [word for word in full_subject_b.split() if word.lower() not in stopwords]
+        
+        # wrap relation in quotes
+        # relation, negative_relation = '"'+relation+'"', '"'+negative_relation+'"'
+        
+        # move modifier to the predicate
+        modifier = [word for word in full_subject_a if word in ['is']]
+        if len(modifier) > 0:
+            full_subject_a.remove(modifier[0])
+            relation = modifier[0] + " " + relation
+            negative_relation = modifier[0] + " " + negative_relation
+        else:
+            # print ('relation:', relation, ':', data_point["caption"])
+            pass
         # convert word array to string
         full_subject_a = " ".join(full_subject_a)
         full_subject_b = " ".join(full_subject_b)
 
+        # contains
         stopwords = ['the', 'is']
         subject_a  = [word for word in full_subject_a.split() if word.lower() not in stopwords][0].strip(".")
         subject_b  = [word for word in full_subject_b.split() if word.lower() not in stopwords][0].strip(".")
@@ -165,15 +181,26 @@ class ImageTextClassificationDataset(Dataset):
 
         captions = [
             # false case first
-            data_point["caption"].split(' ' + relation + ' ')[0] \
-                + ' ' + relation,
+            # full_subject_a + ' ' + negative_relation + ' ' + full_subject_b,
+            # full_subject_a + ' ' + relation, 
+            # full_subject_a + ' "' + negative_relation + '" ' + full_subject_b,
+            full_subject_a + ' "' + negative_relation + '"',
+            # data_point["caption"].split(' ' + relation + ' ')[0] \
+            #     + ' ' + relation,
             # "<" + subject_a + '> <' + negate[relation] + '> <' + subject_b + '>',
             # "subject: " + full_subject_a + '. ' + "predicate: " + negate[relation] + '. ' + "object: " + full_subject_b + ".",
+            # subject_a + ', ' + relation,
+            # "<" + subject_a + '> <' + relation + '>',
+            # "<" + full_subject_a + '> <' + relation + '>',
+            # "subject: " + full_subject_a + '. ' + "predicate: " + relation + '. ',
 
             # true case second
-            data_point["caption"], 
+            # data_point["caption"], 
+            # full_subject_a + ' ' + relation + ' ' + full_subject_b,
+            full_subject_a + ' "' + relation + '" ' + full_subject_b,
             # subject_a + ', ' + relation + ', ' + subject_b,
             # "<" + subject_a + '> <' + relation + '> <' + subject_b + '>',
+            # "<" + full_subject_a + '> <' + relation + '> <' + full_subject_b + '>',
             # "subject: " + full_subject_a + '. ' + "predicate: " + relation + '. ' + "object: " + full_subject_b + ".",
             
             # other false cases

@@ -103,10 +103,10 @@ if __name__ == "__main__":
     
     # json_path=os.path.join('data', 'splits', 'random', 'test.jsonl')
     # json_path=os.path.join('data', 'splits', 'zeroshot', 'test.jsonl')
-    # json_path=os.path.join('data', 'data_files', 'all_vsr_validated_data.jsonl') # 10119 image text pairs
-    # json_path=os.path.join('data', 'data_files', 'all_vsr_raw_data.jsonl') # 10119 image text pairs
-    json_path=os.path.join('data', 'data_files', 'first_10_percent_vsr_validated_data.jsonl') # 1012 image text pairs
+    json_path=os.path.join('data', 'data_files', 'all_vsr_validated_data.jsonl') # 10119 image text pairs
+    # json_path=os.path.join('data', 'data_files', 'first_10_percent_vsr_validated_data.jsonl') # 1012 image text pairs
     # json_path=os.path.join('data', 'data_files', 'debug.jsonl') # 10 image text pairs (for debugging)
+    # json_path=os.path.join('data', 'data_files', 'all_vsr_raw_data.jsonl') # 10119 image text pairs
     # img_path=os.path.join('data', 'images')
     img_path=os.path.join('data', 'trainval2017')
     dataset = ImageTextClassificationDataset(img_path, json_path)
