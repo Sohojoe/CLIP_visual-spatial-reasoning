@@ -27,8 +27,9 @@ Open questions:
 ### v-002 results
 
 uses the modified prompts ie:
-  The horse is left of
-  The horse is left of the person.
+
+* The horse is left of
+* The horse is left of the person.
 
 ```
 python src\eval002.py --model_url laion/CLIP-ViT-H-14-laion2B-s32B-b79K
@@ -55,8 +56,9 @@ Score: 53.86%
 ### v-000 results
 
 uses the prompts from the VSR paper (but without retraining); ie:
-  The horse is left of the person. (False)
-  The horse is left of the person. (True)
+
+* The horse is left of the person. (False)
+* The horse is left of the person. (True)
 
 ```
 python src\eval000.py --model_url laion/CLIP-ViT-H-14-laion2B-s32B-b79K
