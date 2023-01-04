@@ -14,12 +14,12 @@
 ```
 python src\eval002.py --model_url laion/CLIP-ViT-H-14-laion2B-s32B-b79K
 ```
-Score: 53.83%
+Score: 55.07%
 
 ```
 python src\eval002.py --model_url openai/clip-vit-large-patch14-336
 ```
-Score: 53.86%
+Score: 54.92%
 
 ### v-001 results
 
