@@ -16,7 +16,7 @@ Note: Currently this is true zero shot (so no fine tuning). I benchmark the foll
 Findings:
 
 * Using the (True) / (False) modifiers proposed in the paper results gives no better than random results.
-* After experimenting with many stratagies for modifying the propts I was able to get results at 55% (so slightly better than average)
+* After experimenting with many stratagies for modifying the prompts I was able to get results at 55% (so slightly better than average)
 
 Open questions:
 
