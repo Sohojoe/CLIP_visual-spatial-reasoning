@@ -10,6 +10,7 @@
 
 Note: Currently this is true zero shot (so no fine tuning). I benchmark the following CLIP models:
 
+* OpenClip laion/CLIP-ViT-bigG-14-laion2B-39B-b160k
 * OpenClip laion/CLIP-ViT-H-14-laion2B-s32B-b79K
 * OpenAI Clip openai/clip-vit-large-patch14-336
 
@@ -31,6 +32,11 @@ uses the modified prompts ie:
   The horse is left of the person.
 
 ```
+python src\eval002.py --model_url laion/CLIP-ViT-bigG-14-laion2B-39B-b160k
+```
+Score: 55.23%
+
+```
 python src\eval002.py --model_url laion/CLIP-ViT-H-14-laion2B-s32B-b79K
 ```
 Score: 55.44%
@@ -41,6 +47,11 @@ python src\eval002.py --model_url openai/clip-vit-large-patch14-336
 Score: 54.39%
 
 ### v-001 results
+
+```
+python src\eval001.py --model_url laion/CLIP-ViT-bigG-14-laion2B-39B-b160k
+```
+Score: 55.23%
 
 ```
 python src\eval001.py --model_url laion/CLIP-ViT-H-14-laion2B-s32B-b79K
@@ -57,6 +68,11 @@ Score: 53.86%
 uses the prompts from the VSR paper (but without retraining); ie:
   The horse is left of the person. (False)
   The horse is left of the person. (True)
+
+```
+python src\eval000.py --model_url laion/CLIP-ViT-bigG-14-laion2B-39B-b160k
+```
+Score: 49.24%
 
 ```
 python src\eval000.py --model_url laion/CLIP-ViT-H-14-laion2B-s32B-b79K
