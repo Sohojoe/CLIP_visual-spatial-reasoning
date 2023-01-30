@@ -85,7 +85,7 @@ def train(args, device, model, train_dataloader, test_dataloader, test_dataset):
     wandb.init(project="clip-visual-spatial-reasoning", config=args)
 
     total_loss = 0
-    best_accuracy = np.Inf
+    best_accuracy = -np.Inf
     best_iter = 0
     checkpoint_path = None
     step_global = 0
@@ -120,7 +120,6 @@ def train(args, device, model, train_dataloader, test_dataloader, test_dataset):
         lr = optimizer.param_groups[0]['lr']
         wandb_log = {"loss": total_loss, "lr": lr}
         print("Epoch: {:04d}, Loss: {}".format(epoch, total_loss))
-        step_global += 1
 
         # save model
 
@@ -193,7 +192,7 @@ def train(args, device, model, train_dataloader, test_dataloader, test_dataset):
                 if old_checkpoint_path is not None:
                     os.remove(old_checkpoint_path)
                 print (f"===== best model saved! =======")
-        
+        step_global += 1
         wandb.log(wandb_log)
 
 if __name__ == "__main__":
@@ -215,7 +214,7 @@ if __name__ == "__main__":
     
 
     # debug settings
-    # args.learning_rate = 1e-6
+    args.learning_rate = 3e-6
     # args.only_evaluate = True
     # args.checkpoint_path = os.path.join('model_checkpoint', 'model_1850.pt')
     # args.checkpoint_path = os.path.join('model_checkpoint', 'model_0961.pt')
