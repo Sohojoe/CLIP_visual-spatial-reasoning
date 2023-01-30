@@ -16,20 +16,33 @@ class image_title_dataset(Dataset):
     def __init__(self, list_image_path, list_txt):
 
         self.image_path = list_image_path
-        # you can tokenize everything at once in here(slow at the beginning), or tokenize it in the training loop.
-        self.title = clip.tokenize(list_txt)
+        self.caption_tokens = clip.tokenize(list_txt)
+
+        self.negative_caption_tokens = {}
+
+        for i in range (len(list_txt)):
+            caption = list_txt[i]
+            if caption.endswith('(True)'):
+                caption = caption.replace('(True)', '(False)')
+            else:
+                caption = caption.replace('(False)', '(True)')
+            self.negative_caption_tokens[str(self.caption_tokens[i].numpy())] = clip.tokenize(caption)
+
 
     def __len__(self):
-        return len(self.title)
+        return len(self.caption_tokens)
 
     def __getitem__(self, idx):
         # Image from PIL module
         image = preprocess(Image.open(self.image_path[idx]))
-        title = self.title[idx]
-        return image, title
+        caption_token = self.caption_tokens[idx]
+        return image, caption_token
+
+    def get_inverse_prompt_token(self, caption_token):
+        return self.negative_caption_tokens[str(caption_token.numpy())]
 
 
-def create_training_dataset(json_path, img_path):
+def create_dataset(json_path, img_path):
     data_json = []
     with open(json_path, "r") as f:
         lines = f.readlines()
@@ -49,42 +62,13 @@ def create_training_dataset(json_path, img_path):
     dataset = image_title_dataset(list_image_path, list_txt)
     return dataset
 
-def create_validation_dataset(json_path, img_path):
-    data_json = []
-    with open(json_path, "r") as f:
-        lines = f.readlines()
-        for line in lines:
-            j_line = json.loads(line)
-            data_json.append(j_line)
-    list_image_path = []
-    list_txt = []
-    for data in data_json:
-        list_image_path.append(os.path.join(img_path, data['image']))
-        list_image_path.append(os.path.join(img_path, data['image']))
-        caption = data['caption']
-        if data['label'] == 1:
-            caption = caption + ' (True)'
-            list_txt.append(caption)
-            caption = caption + ' (False)'
-            list_txt.append(caption)
-        else:
-            caption = caption + ' (False)'
-            list_txt.append(caption)
-            caption = caption + ' (True)'
-            list_txt.append(caption)
-    dataset = image_title_dataset(list_image_path, list_txt)
-    return dataset
-
-
 # https://github.com/openai/CLIP/issues/57
-
-
 def convert_models_to_fp32(model):
     for p in model.parameters():
         p.data = p.data.float()
         p.grad.data = p.grad.data.float()
 
-def train(args, device, model, train_dataloader, validation_dataloader):
+def train(args, device, model, train_dataloader, test_dataloader, test_dataset):
 
     if device == "cpu":
         model.float()
@@ -97,23 +81,11 @@ def train(args, device, model, train_dataloader, validation_dataloader):
     # Params used from paper, the lr is smaller, more safe for fine tuning to new dataset
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate,
                         betas=args.betas, eps=args.eps, weight_decay=args.weight_decay)
-                        # betas=(0.9, 0.98), eps=1e-6, weight_decay=0.2)
-    # config = {
-    #     "learning_rate": optimizer.param_groups[0]['lr'],
-    #     "betas": optimizer.param_groups[0]['betas'],
-    #     "eps": optimizer.param_groups[0]['eps'],
-    #     "weight_decay": optimizer.param_groups[0]['weight_decay'],
-    #     # "learning_rate": 5e-5,
-    #     "epochs": args.epoc,
-    #     "batch_size": args.batch_size,
-    #     "device": device,
-    #     "base_model": BASE_MODEL,
-    # }
-    # wandb.init(project="clip-visual-spatial-reasoning", entity="sohojoe")
+    
     wandb.init(project="clip-visual-spatial-reasoning", config=args)
 
     total_loss = 0
-    best_loss = np.Inf
+    best_accuracy = np.Inf
     best_iter = 0
     checkpoint_path = None
     step_global = 0
@@ -154,24 +126,22 @@ def train(args, device, model, train_dataloader, validation_dataloader):
 
         # validate epoch
         if args.only_evaluate or step_global % args.eval_step == 0:
-            # model_path = os.path.join('model_checkpoint', 'model_1850.pt')
-            # model_path = os.path.join('model_checkpoint', 'model_0961.pt')
-            # checkpoint = torch.load(model_path)
             model.eval()
-
-            # # Use these 3 lines if you use default model setting(not training setting) of the clip. For example, if you set context_length to 100 since your string is very long during training, then assign 100 to checkpoint['model_state_dict']["context_length"] 
-            # checkpoint['model_state_dict']["input_resolution"] = model.visual.input_resolution #default is 224
-            # checkpoint['model_state_dict']["context_length"] = model.context_length # default is 77
-            # checkpoint['model_state_dict']["vocab_size"] = model.vocab_size 
-
-            # model.load_state_dict(checkpoint['model_state_dict'])
             num_correct = 0
             num_errors = 0
-            validation_losses = []
-            for batch in validation_dataloader:
+            test_losses = []
+            for batch in test_dataloader:
                 # optimizer.zero_grad()
 
                 images, texts = batch
+
+                for i in range(len(images)):
+                    caption_token = texts[i]
+                    negative_caption_token = test_dataset.get_inverse_prompt_token(caption_token)
+                    # texts.append(negative_caption_token)
+                    # append negative_caption_token (shape is [1,77]) to texts (shape is [32,77])
+                    texts = torch.cat((texts, negative_caption_token), 0)
+
 
                 images = images.to(device)
                 texts = texts.to(device)
@@ -179,31 +149,35 @@ def train(args, device, model, train_dataloader, validation_dataloader):
                 with torch.no_grad():
                     logits_per_image, logits_per_text = model(images, texts)
 
-                    ground_truth = torch.arange(
-                        len(images), dtype=torch.long, device=device)
+                # calculate loss
+                len_for_loss = int(logits_per_image.shape[1]/2)
+                logits_per_image_for_loss = logits_per_image[:,:len_for_loss]
+                logits_per_text_for_loss = logits_per_text[:len_for_loss,:]
+                ground_truth = torch.arange(
+                    len(images), dtype=torch.long, device=device)
+                total_loss = (loss_img(logits_per_image_for_loss, ground_truth) +
+                    loss_txt(logits_per_text_for_loss, ground_truth))/2
+                test_losses.append(total_loss.item())
 
-                    total_loss = (loss_img(logits_per_image, ground_truth) +
-                        loss_txt(logits_per_text, ground_truth))/2
-                    validation_losses.append(total_loss.item())
-
-
-                # i = 0
-                # while i < len(logits_per_image):
-                #     if torch.argmax(logits_per_image[i]) == torch.argmax(logits_per_text[i]):
-                #         num_correct += 1
-                #     else:
-                #         num_errors += 1
-                #     i += 2
+                # calculate accuracy
+                for i in range(len(logits_per_image)):
+                    possitive = logits_per_text[i,i]
+                    negative = logits_per_text[i+len(logits_per_image),i]
+                    if possitive >= negative:
+                        num_correct += 1
+                    else:
+                        num_errors += 1
             model.train()
-            # acc = float(num_correct) / float(num_correct + num_errors)
-            acc = np.mean(validation_losses)
+            test_accuracy = float(num_correct) / float(num_correct + num_errors)
+            test_loss = np.mean(test_losses)
             print (f"====== evaliuate ======")
-            print (f"epoch: {epoch}, global step: {step_global}, val performance: {acc}")
+            print (f"epoch: {epoch}, global step: {step_global}, test_loss: {test_loss}, test_accuracy: {test_accuracy}")
             print (f"=======================")
-            wandb_log["eval_acc"] = acc
-            if acc < best_loss:
+            wandb_log["test_loss"] = test_loss
+            wandb_log["test_accuracy"] = test_accuracy
+            if test_accuracy < best_accuracy:
                 best_iter = epoch+1
-                best_loss = acc
+                best_accuracy = test_accuracy
 
                 checkpoint_dir = os.path.join(f"model_checkpoint")
                 if not os.path.exists(checkpoint_dir):
@@ -223,22 +197,11 @@ def train(args, device, model, train_dataloader, validation_dataloader):
         wandb.log(wandb_log)
 
 if __name__ == "__main__":
-    # EPOCH = 1024*3
-    # BATCH_SIZE = 384
-    # BASE_MODEL = "ViT-B/32"
-    # # LEARNING_RATE = 5e-5
-    # LEARNING_RATE = 2e-5
-    # EVAL_STEP = 10
-
-    # If using GPU then use mixed precision training.
-    # device = "cpu" # for debugging
-
-
     parser = argparse.ArgumentParser(description='train')
     parser.add_argument('--random_seed', type=int, default=42)
     parser.add_argument('--epoch', type=int, default=3000)
     parser.add_argument('--batch_size', type=int, default=384)
-    parser.add_argument('--learning_rate', type=float, default=2e-5)
+    parser.add_argument('--learning_rate', type=float, default=1e-6)
     parser.add_argument('--eval_step', type=int, default=10)
     parser.add_argument('--base_model', type=str, default="ViT-B/32")
     parser.add_argument('--betas', type=float, default=(0.9, 0.98))
@@ -252,6 +215,7 @@ if __name__ == "__main__":
     
 
     # debug settings
+    # args.learning_rate = 1e-6
     # args.only_evaluate = True
     # args.checkpoint_path = os.path.join('model_checkpoint', 'model_1850.pt')
     # args.checkpoint_path = os.path.join('model_checkpoint', 'model_0961.pt')
@@ -259,7 +223,7 @@ if __name__ == "__main__":
 
     torch.manual_seed(args.random_seed)
 
-    if args.device is not None:
+    if args.device is None:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
     else:
         device = args.device
@@ -282,14 +246,13 @@ if __name__ == "__main__":
     # json_path = os.path.join('data', 'splits', 'random', 'dev.jsonl')
     json_path = os.path.join('data', 'splits', 'random', 'train.jsonl')
     img_path = os.path.join('data', 'trainval2017')
-    dataset = create_training_dataset(json_path, img_path)
-    validation_json_path = os.path.join('data', 'splits', 'random', 'test.jsonl')
-    validation_img_path = os.path.join('data', 'trainval2017')
-    # validation_dataset = create_validation_dataset(validation_json_path, validation_img_path)
-    validation_dataset = create_training_dataset(validation_json_path, validation_img_path)
+    dataset = create_dataset(json_path, img_path)
+    test_json_path = os.path.join('data', 'splits', 'random', 'test.jsonl')
+    test_img_path = os.path.join('data', 'trainval2017')
+    test_dataset = create_dataset(test_json_path, test_img_path)
 
     # Define your own dataloader
     train_dataloader = DataLoader(dataset, batch_size=args.batch_size)
-    validation_dataloader = DataLoader(validation_dataset, batch_size=32)
+    test_dataloader = DataLoader(test_dataset, batch_size=32)
 
-    train(args, device, model, train_dataloader, validation_dataloader)
+    train(args, device, model, train_dataloader, test_dataloader, test_dataset)
