@@ -11,6 +11,7 @@ import json
 import wandb
 import numpy as np
 import argparse
+import sys
 
 class image_title_dataset(Dataset):
     def __init__(self, list_image_path, list_txt):
@@ -66,7 +67,8 @@ def create_dataset(json_path, img_path):
 def convert_models_to_fp32(model):
     for p in model.parameters():
         p.data = p.data.float()
-        p.grad.data = p.grad.data.float()
+        if p.grad is not None:
+            p.grad.data = p.grad.data.float()
 
 def train(args, device, model, train_dataloader, test_dataloader, test_dataset):
 
@@ -82,7 +84,10 @@ def train(args, device, model, train_dataloader, test_dataloader, test_dataset):
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate,
                         betas=args.betas, eps=args.eps, weight_decay=args.weight_decay)
     
-    wandb.init(project="clip-visual-spatial-reasoning", config=args)
+    wandb_name = "clip-visual-spatial-reasoning"
+    if args.debugging:
+        wandb_name = "debugging-" + wandb_name
+    wandb.init(project=wandb_name, config=args)
 
     total_loss = 0
     best_accuracy = -np.Inf
@@ -213,6 +218,8 @@ if __name__ == "__main__":
     parser.add_argument('--only_evaluate', type=bool, default=False)
     parser.add_argument('--checkpoint_path', type=str, required=False)
     parser.add_argument('--device', type=str, required=False)
+    parser.add_argument('--freeze_visual', type=bool, default=True)
+    parser.add_argument('--debugging', type=bool, default=False)
 
     args = parser.parse_args()
     
@@ -223,6 +230,8 @@ if __name__ == "__main__":
     # args.checkpoint_path = os.path.join('model_checkpoint', 'model_1850.pt')
     # args.checkpoint_path = os.path.join('model_checkpoint', 'model_0961.pt')
     # args.device = "cpu"
+    if sys._getframe().f_back:
+        args.debugging = True
 
     torch.manual_seed(args.random_seed)
 
@@ -244,6 +253,11 @@ if __name__ == "__main__":
         # checkpoint['model_state_dict']["context_length"] = model.context_length # default is 77
         # checkpoint['model_state_dict']["vocab_size"] = model.vocab_size 
         model.load_state_dict(checkpoint['model_state_dict'])
+
+    # freeze visual model
+    if args.freeze_visual:
+        for k in model.visual.transformer.parameters():  
+            k.requires_grad=False
 
     # use your own data
     # json_path = os.path.join('data', 'splits', 'random', 'dev.jsonl')
