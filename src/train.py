@@ -91,37 +91,8 @@ def train(args, device, model, train_dataloader, test_dataloader, test_dataset):
     step_global = 0
     total_epoch = 1 if args.only_evaluate else args.epoch
     for epoch in range(total_epoch):
-        # training epoch
-        if not args.only_evaluate:
-            for batch in train_dataloader:
-                optimizer.zero_grad()
-
-                images, texts = batch
-
-                images = images.to(device)
-                texts = texts.to(device)
-
-                logits_per_image, logits_per_text = model(images, texts)
-
-                ground_truth = torch.arange(
-                    len(images), dtype=torch.long, device=device)
-
-                total_loss = (loss_img(logits_per_image, ground_truth) +
-                            loss_txt(logits_per_text, ground_truth))/2
-                total_loss.backward()
-                if device == "cpu":
-                    optimizer.step()
-                else:
-                    convert_models_to_fp32(model)
-                    optimizer.step()
-                    clip.model.convert_weights(model)
-
         # send multiple parms to wandb
-        lr = optimizer.param_groups[0]['lr']
-        wandb_log = {"loss": total_loss, "lr": lr}
-        print("Epoch: {:04d}, Loss: {}".format(epoch, total_loss))
-
-        # save model
+        wandb_log = {}
 
         # validate epoch
         if args.only_evaluate or step_global % args.eval_step == 0:
@@ -174,7 +145,7 @@ def train(args, device, model, train_dataloader, test_dataloader, test_dataset):
             print (f"=======================")
             wandb_log["test_loss"] = test_loss
             wandb_log["test_accuracy"] = test_accuracy
-            if test_accuracy < best_accuracy:
+            if test_accuracy > best_accuracy:
                 best_iter = epoch+1
                 best_accuracy = test_accuracy
 
@@ -192,6 +163,39 @@ def train(args, device, model, train_dataloader, test_dataloader, test_dataset):
                 if old_checkpoint_path is not None:
                     os.remove(old_checkpoint_path)
                 print (f"===== best model saved! =======")
+        
+        # training epoch
+        if not args.only_evaluate:
+            for batch in train_dataloader:
+                optimizer.zero_grad()
+
+                images, texts = batch
+
+                images = images.to(device)
+                texts = texts.to(device)
+
+                logits_per_image, logits_per_text = model(images, texts)
+
+                ground_truth = torch.arange(
+                    len(images), dtype=torch.long, device=device)
+
+                total_loss = (loss_img(logits_per_image, ground_truth) +
+                            loss_txt(logits_per_text, ground_truth))/2
+                total_loss.backward()
+                if device == "cpu":
+                    optimizer.step()
+                else:
+                    convert_models_to_fp32(model)
+                    optimizer.step()
+                    clip.model.convert_weights(model)
+
+        wandb_log["loss"] = total_loss
+        wandb_log["lr"] = optimizer.param_groups[0]['lr']
+        print("Epoch: {:04d}, Loss: {}".format(epoch, total_loss))
+
+        # save model
+        # TODO save model every n epoch
+
         step_global += 1
         wandb.log(wandb_log)
 
@@ -199,7 +203,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train')
     parser.add_argument('--random_seed', type=int, default=42)
     parser.add_argument('--epoch', type=int, default=3000)
-    parser.add_argument('--batch_size', type=int, default=384)
+    parser.add_argument('--batch_size', type=int, default=400)
     parser.add_argument('--learning_rate', type=float, default=1e-6)
     parser.add_argument('--eval_step', type=int, default=10)
     parser.add_argument('--base_model', type=str, default="ViT-B/32")
@@ -214,7 +218,7 @@ if __name__ == "__main__":
     
 
     # debug settings
-    args.learning_rate = 3e-6
+    # args.learning_rate = 3e-6
     # args.only_evaluate = True
     # args.checkpoint_path = os.path.join('model_checkpoint', 'model_1850.pt')
     # args.checkpoint_path = os.path.join('model_checkpoint', 'model_0961.pt')
