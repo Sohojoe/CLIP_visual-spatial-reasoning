@@ -100,7 +100,8 @@ def train(args, device, model, train_dataloader, test_dataloader, test_dataset):
         wandb_log = {}
 
         # validate epoch
-        if args.only_evaluate or step_global % args.eval_step == 0:
+        validate = (args.only_evaluate or step_global % args.eval_step == 0) and not args.skip_evaluate
+        if validate:
             model.eval()
             num_correct = 0
             num_errors = 0
@@ -138,7 +139,7 @@ def train(args, device, model, train_dataloader, test_dataloader, test_dataset):
                 for i in range(len(logits_per_image)):
                     possitive = logits_per_text[i,i]
                     negative = logits_per_text[i+len(logits_per_image),i]
-                    if possitive >= negative:
+                    if possitive > negative:
                         num_correct += 1
                     else:
                         num_errors += 1
@@ -219,24 +220,31 @@ if __name__ == "__main__":
     parser.add_argument('--checkpoint_path', type=str, required=False)
     parser.add_argument('--device', type=str, required=False)
     parser.add_argument('--freeze_visual', type=bool, default=True)
+    parser.add_argument('--skip_evaluate', type=bool, default=False)
     parser.add_argument('--debugging', type=bool, default=False)
 
     args = parser.parse_args()
     
 
     # debug settings
-    # args.learning_rate = 3e-6
+    # args.learning_rate = 4e-6
+    # args.eval_step = 1
+    args.base_model = "ViT-L/14@336px"
+    args.batch_size = 27
+    # args.skip_evaluate = True
     # args.only_evaluate = True
+    # args.checkpoint_path = os.path.join('model_checkpoint', 'model_0005 - lr1e-4.pt')
     # args.checkpoint_path = os.path.join('model_checkpoint', 'model_1850.pt')
     # args.checkpoint_path = os.path.join('model_checkpoint', 'model_0961.pt')
     # args.device = "cpu"
+
     if sys._getframe().f_back:
         args.debugging = True
 
     torch.manual_seed(args.random_seed)
 
     if args.device is None:
-        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        device = "cuda" if torch.cuda.is_available() else "cpu"
     else:
         device = args.device
 
