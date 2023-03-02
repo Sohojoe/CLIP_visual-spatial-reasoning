@@ -172,9 +172,18 @@ def train(args, device, model, train_dataloader, test_dataloader, test_dataset):
         
         # training epoch
         if not args.only_evaluate:
+            optimizer.zero_grad()
+            cur_batch_completed = 0
+            total_loss = 0.0
+            num_loss = 0.0
+            def step():
+                if device == "cpu":
+                    optimizer.step()
+                else:
+                    convert_models_to_fp32(model)
+                    optimizer.step()
+                    clip.model.convert_weights(model)
             for batch in train_dataloader:
-                optimizer.zero_grad()
-
                 images, texts = batch
 
                 images = images.to(device)
@@ -185,19 +194,27 @@ def train(args, device, model, train_dataloader, test_dataloader, test_dataset):
                 ground_truth = torch.arange(
                     len(images), dtype=torch.long, device=device)
 
-                total_loss = (loss_img(logits_per_image, ground_truth) +
+                loss = (loss_img(logits_per_image, ground_truth) +
                             loss_txt(logits_per_text, ground_truth))/2
-                total_loss.backward()
-                if device == "cpu":
-                    optimizer.step()
-                else:
-                    convert_models_to_fp32(model)
-                    optimizer.step()
-                    clip.model.convert_weights(model)
+                loss.backward()
+                total_loss += loss.item()
+                num_loss += 1
 
-        wandb_log["loss"] = total_loss
+                cur_batch_completed += len(batch)
+                if cur_batch_completed >= args.batch_size:
+                    step()
+                    cur_batch_completed = 0
+                    optimizer.zero_grad()
+                    average_loss = total_loss / num_loss
+                    total_loss = 0.0
+                    num_loss = 0.0
+            if cur_batch_completed > 0:
+                step()
+                average_loss = total_loss / num_loss
+        
+        wandb_log["loss"] = average_loss
         wandb_log["lr"] = optimizer.param_groups[0]['lr']
-        print("Epoch: {:04d}, Loss: {}".format(epoch, total_loss))
+        print("Epoch: {:04d}, Loss: {}".format(epoch, average_loss))
 
         # save model
         # TODO save model every n epoch
@@ -210,7 +227,8 @@ if __name__ == "__main__":
     parser.add_argument('--random_seed', type=int, default=42)
     parser.add_argument('--epoch', type=int, default=3000)
     parser.add_argument('--batch_size', type=int, default=400)
-    parser.add_argument('--learning_rate', type=float, default=1e-6)
+    parser.add_argument('--mini_batch_size', type=int, default=400)
+    parser.add_argument('--learning_rate', type=float, default=3e-6)
     parser.add_argument('--eval_step', type=int, default=10)
     parser.add_argument('--base_model', type=str, default="ViT-B/32")
     parser.add_argument('--betas', type=float, default=(0.9, 0.98))
@@ -227,16 +245,23 @@ if __name__ == "__main__":
     
 
     # debug settings
+    # python src\train.py --base_model ViT-L/14@336px --mini_batch_size 25
+    # args.base_model = "ViT-L/14@336px"
+    # args.mini_batch_size = 25
     # args.learning_rate = 4e-6
     # args.eval_step = 1
-    args.base_model = "ViT-L/14@336px"
-    args.batch_size = 27
     # args.skip_evaluate = True
     # args.only_evaluate = True
     # args.checkpoint_path = os.path.join('model_checkpoint', 'model_0005 - lr1e-4.pt')
     # args.checkpoint_path = os.path.join('model_checkpoint', 'model_1850.pt')
     # args.checkpoint_path = os.path.join('model_checkpoint', 'model_0961.pt')
     # args.device = "cpu"
+
+    # assert that batch_size is divisible by mini_batch_size; and that mini_batch_size is =< batch_size
+    assert args.batch_size % args.mini_batch_size == 0
+    assert args.mini_batch_size <= args.batch_size
+
+
 
     if sys._getframe().f_back:
         args.debugging = True
@@ -277,7 +302,7 @@ if __name__ == "__main__":
     test_dataset = create_dataset(test_json_path, test_img_path)
 
     # Define your own dataloader
-    train_dataloader = DataLoader(dataset, batch_size=args.batch_size)
+    train_dataloader = DataLoader(dataset, batch_size=args.mini_batch_size, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=32)
 
     train(args, device, model, train_dataloader, test_dataloader, test_dataset)
