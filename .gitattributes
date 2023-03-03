@@ -1,2 +1,4 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+model_checkpoint filter=lfs diff=lfs merge=lfs -text
+model_checkpoint/model_run-110-61-76.pt filter=lfs diff=lfs merge=lfs -text

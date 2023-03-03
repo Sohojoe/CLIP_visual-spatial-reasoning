@@ -25,6 +25,13 @@ Open questions:
 * How do the different relationship score (does CLIP nativly understand any relationships resonable well)
 
 
+### - fine tuning results
+```
+python src\train.py --base_model ViT-L/14@336px --mini_batch_size 25 --learning_rate 3e-6 --eps 1e-6
+```
+test_accuracy: 61.76
+trained model: model_run-110-61-76.pt
+
 ### v-002 results
 
 uses the modified prompts ie:
