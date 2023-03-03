@@ -27,10 +27,10 @@ Open questions:
 
 ### - fine tuning results
 ```
-python src\train.py --base_model ViT-L/14@336px --mini_batch_size 25 --learning_rate 3e-6 --eps 1e-6
+python src\train.py --base_model ViT-L/14@336px --mini_batch_size 20 --batch_size 500 --learning_rate 2e-5
 ```
-test_accuracy: 61.76
-trained model: model_run-110-61-76.pt
+test_accuracy: 65.07%
+trained model: model_run-113-65-07.pt
 
 ### v-002 results
 

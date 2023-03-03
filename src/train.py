@@ -228,7 +228,7 @@ if __name__ == "__main__":
     parser.add_argument('--epoch', type=int, default=3000)
     parser.add_argument('--batch_size', type=int, default=400)
     parser.add_argument('--mini_batch_size', type=int, default=400)
-    parser.add_argument('--learning_rate', type=float, default=2e-4)
+    parser.add_argument('--learning_rate', type=float, default=2e-5)
     parser.add_argument('--eval_step', type=int, default=10)
     parser.add_argument('--base_model', type=str, default="ViT-B/32")
     parser.add_argument('--betas', type=float, default=(0.9, 0.98))
