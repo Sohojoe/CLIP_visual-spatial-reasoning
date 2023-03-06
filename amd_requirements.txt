@@ -1,4 +1,6 @@
-torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/rocm5.2
+torch --extra-index-url https://download.pytorch.org/whl/rocm5.2
+torchvision --extra-index-url https://download.pytorch.org/whl/rocm5.2
+torchaudio --extra-index-url https://download.pytorch.org/whl/rocm5.2
 -e git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers
 -e git+https://github.com/openai/CLIP.git@main#egg=clip
 numpy
