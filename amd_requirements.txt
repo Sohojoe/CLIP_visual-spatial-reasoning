@@ -11,3 +11,4 @@ opencv_python
 tqdm
 transformers
 utils
+wandb
